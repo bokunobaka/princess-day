@@ -4,7 +4,14 @@ const CACHE = 'princess-day-%%VERSION%%';
 const FILES = %%FILES%%;
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache each file on its own so one failed download never blocks the install;
+  // anything missed is cached the first time the game asks for it
+  e.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => Promise.allSettled(FILES.map((f) => c.add(f))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
