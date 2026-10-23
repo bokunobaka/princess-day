@@ -73,7 +73,7 @@ export default {
       track: a.teddy, hitRadius: 1.2, reach: 3.0, hitY: 1.2,
       run: () => {
         sfx.boing();
-        a.cheerTeddy(1.2);
+        a.cheerTeddy(game.sillyTap('teddy') ? 3 : 1.2);
         game.hearts.emit(a.teddy.position.x, 2.2, a.teddy.position.z, 6, { speed: 0.6, up: 1.2, life: 1.6, colors: [0xff5fae, 0xff8fc7] });
         say(t('d7.teddy'));
       },

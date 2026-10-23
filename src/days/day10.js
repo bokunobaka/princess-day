@@ -16,7 +16,6 @@ export default {
   name: t('d10.name'),
   sticker: '🏊',
   area: 'pool',
-  final: true,
   intro: t('d10.intro'),
   steps: [
     { id: 'toys', icon: '🦆', count: 4, hint: t('d10.h.toys') },

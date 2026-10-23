@@ -22,3 +22,8 @@ game.init().then(() => {
     game.state = 'play';
   }
 });
+
+// offline support: only in the built game (the dev server would cache stale code)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}

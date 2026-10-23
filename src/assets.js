@@ -4,7 +4,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { gradient } from './models.js';
 
-const PETS = ['bunny', 'elephant', 'giraffe', 'panda', 'cat', 'pig', 'fox', 'penguin', 'dog'];
+const PETS = [
+  'bunny', 'elephant', 'giraffe', 'panda', 'cat', 'pig', 'fox', 'penguin', 'dog', 'deer', 'cow', 'chick', 'hog',
+  'fish', 'crab', 'lion', 'monkey', 'tiger', 'beaver', 'koala', 'parrot', 'polar', 'bee', 'caterpillar',
+];
 const FOOD = [
   'egg', 'bag', 'strawberry', 'carrot', 'cookie', 'cupcake', 'bowl', 'whisk', 'carton', 'apple',
   'cup-tea', 'cake-birthday', 'muffin', 'cherries', 'whipped-cream', 'rollingPin', 'pie', 'donut-sprinkles',
@@ -159,8 +162,9 @@ export class Critter {
     this.currentName = name;
   }
 
-  // play a one-shot (e.g. wave) then fall back to idle
+  // play a one-shot (e.g. wave) then fall back to idle; friendly gestures make the animal's call
   gesture(name, back = 'idle') {
+    if (name === 'gesture-positive' && Critter.callHook) Critter.callHook(this.name);
     this.play(name, { once: true });
     const a = this.actions[name] || this.actions[ALIASES[name]];
     if (!a) return;

@@ -51,8 +51,14 @@ export const DRESSES = [
   { main: 0xff9a9a, deep: 0xe84545 },
   { main: 0xffb066, deep: 0xf06a14 },
   { main: 0x8a6bd1, deep: 0x4b2f8f },
+  { main: 0xfff5fb, deep: 0xe0c3ea }, // 8 pearl
+  { main: 0x6fe0d0, deep: 0x1fb5a8 }, // 9 sea teal
+  { main: 0xf6b7a8, deep: 0xd9806f }, // 10 rose gold
+  { main: 0x6a7bff, deep: 0xb04bff }, // 11 galaxy
+  { main: 0xf5c542, deep: 0xc99a1c }, // 12 gold
+  { main: 0xd9efff, deep: 0x7fb8ff }, // 13 frost
 ];
-export const CROWN_ICONS = ['👑', '💎', '🌸', '🎀', '🧙', '🐱'];
+export const CROWN_ICONS = ['👑', '💎', '🌸', '🎀', '🧙', '🐱', '🦄', '🐚', '🐰', '🌟', '🎩', '❄️'];
 
 export function makePrincess(outfit = { dress: 0, crown: 0 }) {
   const root = new THREE.Group();
@@ -153,6 +159,71 @@ export function makePrincess(outfit = { dress: 0, crown: 0 }) {
     inner.rotation.z = -sx * 0.25;
   }
   crowns.push(cat);
+
+  // unicorn horn on a flower headband
+  const uni = new THREE.Group();
+  uni.position.set(0, 0.3, 0.12);
+  add(uni, CONE, 0xfff1c9, [0, 0.22, 0.05], [0.07, 0.4, 0.07]).rotation.x = -0.2;
+  for (let i = 0; i < 4; i++) {
+    const ring = add(uni, new THREE.TorusGeometry(0.06 - i * 0.012, 0.012, 6, 12), [0xff8fc7, 0xffd23f, 0x6ad7ff, 0xb48cff][i], [0, 0.08 + i * 0.07, 0.04 - i * 0.012]);
+    ring.rotation.x = Math.PI / 2 - 0.2;
+  }
+  for (const sx of [-1, 1]) {
+    ball(uni, 0xff9ac7, [sx * 0.2, 0.02, -0.08], 0.06);
+    ball(uni, 0xb48cff, [sx * 0.3, -0.05, -0.12], 0.05);
+  }
+  crowns.push(uni);
+
+  // seashell crown
+  const shell = new THREE.Group();
+  shell.position.set(0, 0.3, 0);
+  for (let i = 0; i < 5; i++) {
+    const a = ((i - 2) / 5) * Math.PI * 1.1 + Math.PI / 2;
+    const sh = add(shell, SPHERE, i % 2 ? 0xffd1e6 : 0xffffff, [Math.cos(a) * 0.26, 0.04, Math.sin(a) * 0.26], [0.1, 0.1, 0.05]);
+    sh.rotation.set(0.4, -a + Math.PI / 2, 0);
+    ball(shell, 0xfff8e8, [Math.cos(a) * 0.3, -0.02, Math.sin(a) * 0.3], 0.03);
+  }
+  crowns.push(shell);
+
+  // bunny ears
+  const bun = new THREE.Group();
+  bun.position.set(0, 0.32, 0);
+  for (const sx of [-1, 1]) {
+    const e = ball(bun, 0xffffff, [sx * 0.14, 0.28, 0], [0.07, 0.3, 0.05]);
+    e.rotation.z = -sx * 0.2;
+    const ei = ball(bun, 0xffb6cf, [sx * 0.14, 0.28, 0.03], [0.04, 0.22, 0.03]);
+    ei.rotation.z = -sx * 0.2;
+  }
+  crowns.push(bun);
+
+  // golden star halo floating above the head
+  const halo = new THREE.Group();
+  halo.position.set(0, 0.62, 0);
+  const star = add(halo, new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffe066 }), [0, 0, 0]);
+  star.scale.set(1, 1.25, 0.4);
+  const hr = add(halo, new THREE.TorusGeometry(0.2, 0.025, 8, 24), 0xffe066, [0, -0.18, 0]);
+  hr.rotation.x = Math.PI / 2;
+  crowns.push(halo);
+  // ringmaster's top hat
+  const hat = new THREE.Group();
+  hat.position.set(0, 0.32, 0);
+  add(hat, CYL, 0x2b2236, [0, 0, 0], [0.42, 0.04, 0.42]);
+  add(hat, CYL, 0x2b2236, [0, 0.22, 0], [0.26, 0.44, 0.26]);
+  add(hat, CYL, 0xff4d6d, [0, 0.07, 0], [0.265, 0.07, 0.265]);
+  crowns.push(hat);
+
+  // snowflake crown
+  const snow = new THREE.Group();
+  snow.position.set(0, 0.3, 0);
+  const sband = add(snow, new THREE.TorusGeometry(0.31, 0.025, 8, 24, Math.PI * 1.1), 0xcfeaff, [0, 0, 0]);
+  sband.rotation.x = Math.PI / 2;
+  sband.rotation.z = -Math.PI * 0.05;
+  for (let i = 0; i < 3; i++) {
+    const a = (i - 1) * 0.7 + Math.PI / 2;
+    const fl = add(snow, new THREE.OctahedronGeometry(0.1), new THREE.MeshBasicMaterial({ color: i === 1 ? 0xffffff : 0xcfeaff }), [Math.cos(a) * 0.3, 0.1 + (i === 1 ? 0.07 : 0), Math.sin(a) * 0.3]);
+    fl.scale.set(1, 1.5, 0.5);
+  }
+  crowns.push(snow);
   crowns.forEach((c) => head.add(c));
 
   // arms + legs pivot from shoulder / hip
@@ -186,6 +257,12 @@ export function makePrincess(outfit = { dress: 0, crown: 0 }) {
   root.userData.setOutfit(outfit);
 
   let phase = 0;
+  let spinT = 0;
+  let spinDur = 1;
+  root.userData.spin = (dur = 1.2) => {
+    spinT = dur;
+    spinDur = dur;
+  };
   root.userData.cheering = false;
   root.userData.animate = (dt, walk, t) => {
     phase += dt * 9 * walk;
@@ -203,6 +280,10 @@ export function makePrincess(outfit = { dress: 0, crown: 0 }) {
       body.position.y = Math.abs(Math.sin(phase)) * 0.06 * walk + Math.sin(t * 2) * 0.008 * (1 - walk);
     }
     body.rotation.z = Math.sin(phase) * 0.04 * walk;
+    if (spinT > 0) {
+      spinT = Math.max(0, spinT - dt);
+      body.rotation.y = (1 - spinT / spinDur) * Math.PI * 4;
+    } else body.rotation.y = 0;
     head.rotation.z = Math.sin(t * 1.3) * 0.04 * (1 - walk);
   };
   return root;

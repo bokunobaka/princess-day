@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#ffd6ea" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Printsess" />
     <title>Printsessi päev</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E👑%3C/text%3E%3C/svg%3E" />
   </head>
@@ -16,6 +22,7 @@
         <span id="dayBadge" class="badge">Päev 1</span>
         <span id="steps"></span>
       </button>
+      <div id="score" hidden>⭐ 0</div>
       <button id="muteBtn" class="round" data-i18n-aria="aria.sound" aria-label="Heli">🔊</button>
       <button id="bagBtn" class="bag" data-i18n-aria="aria.bag" aria-label="Kott">🎒<span id="bagCount" hidden>0</span></button>
       <div id="bagPanel" hidden><div id="bagItems"></div></div>
@@ -39,7 +46,7 @@
         <h1 data-i18n="ui.title">Printsessi päev</h1>
         <p class="sub" data-i18n="ui.tagline">Viis kuninglikku päeva</p>
         <button id="playBtn" class="big" data-i18n="ui.play">▶ Mängi</button>
-        <div id="dayRow"></div>
+        <div id="dayRow" class="dayRow"></div>
       </div>
     </div>
 
@@ -48,6 +55,7 @@
         <div id="endSticker" class="sticker">🧸</div>
         <h2 id="endTitle">Päev läbitud!</h2>
         <div id="endStars"></div>
+        <div id="endRewards"></div>
         <div class="btns">
           <button id="nextBtn" class="big" data-i18n="ui.next">▶ Järgmine päev</button>
           <button id="homeBtn" class="big alt">🏠</button>
@@ -59,6 +67,67 @@
       <div class="card">
         <div class="crown">👑</div>
         <div class="bar"><i id="barFill"></i></div>
+      </div>
+    </div>
+
+    <button id="parentBtn" aria-label="Parent corner" hidden>⚙️</button>
+
+    <div id="map" class="screen" hidden>
+      <div class="card">
+        <h2 data-i18n="map.title">Vali päev</h2>
+        <div id="mapRow" class="dayRow"></div>
+        <button id="mapClose" class="big alt" aria-label="Close">✖</button>
+      </div>
+    </div>
+
+    <div id="petPick" class="screen" hidden>
+      <div class="card">
+        <h2 data-i18n="pet.pick">Vali endale sõber!</h2>
+        <div id="petGrid" class="petGrid"></div>
+        <div id="petNames" class="petNames" hidden></div>
+      </div>
+    </div>
+
+    <div id="book" class="screen" hidden>
+      <div class="card bookCard">
+        <h2 data-i18n="book.title">Minu raamat</h2>
+        <div id="bookBody"></div>
+        <button id="bookClose" class="big alt" aria-label="Close">✖</button>
+      </div>
+    </div>
+
+    <div id="photoView" class="screen" hidden>
+      <div class="card">
+        <img id="photoImg" alt="" />
+        <div class="btns">
+          <button id="photoDelete" class="big alt" aria-label="Delete">🗑️</button>
+          <button id="photoClose" class="big" aria-label="Close">✔</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="photoUi" hidden>
+      <div id="backdropRow" class="wrow"></div>
+      <button id="shutter" aria-label="Photo">📸</button>
+      <button id="photoExit" class="round" aria-label="Close">✖</button>
+    </div>
+    <div id="flash"></div>
+    <div id="toast"></div>
+    <div id="hand" hidden>👆</div>
+
+    <div id="parent" class="screen" hidden>
+      <div class="card">
+        <h2 data-i18n="parent.title">Vanema nurk</h2>
+        <div class="prow"><span data-i18n="parent.lang">Keel</span>
+          <button id="langEt" class="pill2">Eesti</button><button id="langEn" class="pill2">English</button></div>
+        <div class="prow"><span data-i18n="parent.volume">Helitugevus</span>
+          <input id="volRange" type="range" min="0" max="100" step="5" /></div>
+        <div class="prow">
+          <button id="parentHome" class="pill2" data-i18n="parent.home">Tagasi lossi</button>
+          <button id="parentTitle" class="pill2" data-i18n="parent.toTitle">Algusekraan</button>
+        </div>
+        <div class="prow"><button id="parentReset" class="pill2 danger"></button></div>
+        <button id="parentClose" class="big" aria-label="Close">✔</button>
       </div>
     </div>
 

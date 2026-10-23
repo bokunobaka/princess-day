@@ -75,6 +75,11 @@ export default {
       run: () => {
         a.waveTeddy(2);
         sfx.boing();
+        if (game.sillyTap('teddy')) {
+          a.cheerTeddy(2.5);
+          sfx.chime();
+          game.confettiAt(a.teddy.position, 3);
+        }
         const id = game.step && game.step.id;
         if (id === 'seat') this.seat(game);
         else if (id === 'invite') say(t('d4.teddy'));

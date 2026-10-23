@@ -1,0 +1,17 @@
+{
+  "name": "Printsessi päev",
+  "short_name": "Printsess",
+  "description": "Printsessi päev: kuusteist päeva täis mängu väikestele printsessidele.",
+  "lang": "et",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#ffd6ea",
+  "theme_color": "#ffd6ea",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

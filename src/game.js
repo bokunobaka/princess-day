@@ -8,23 +8,48 @@ import { buildParty } from './areas/party.js';
 import { buildHaunt } from './areas/haunt.js';
 import { buildWinter } from './areas/winter.js';
 import { buildPool } from './areas/pool.js';
+import { buildPalace } from './areas/palace.js';
+import { buildSky } from './areas/sky.js';
+import { buildSea } from './areas/sea.js';
+import { buildFarm } from './areas/farm.js';
+import { buildStudio } from './areas/studio.js';
+import { buildCircus } from './areas/circus.js';
+import { buildCamp } from './areas/camp.js';
+import { buildRink } from './areas/rink.js';
 import { makePrincess } from './models.js';
-import { loadAssets } from './assets.js';
+import { loadAssets, Critter } from './assets.js';
+import { PET_KINDS, PET_NAMES, petName } from './pet.js';
 import { Particles, textures } from './fx.js';
-import { DAYS } from './days/index.js';
+import { DAYS, MINIGAMES } from './days/index.js';
+import HUB from './days/hub.js';
 import * as audio from './audio.js';
 import { say } from './speech.js';
-import { t } from './i18n.js';
+const $ = (id) => document.getElementById(id);
+import { t, setLang } from './i18n.js';
 import { ui } from './ui.js';
-import { load, save } from './save.js';
+import { load, save, resetAll } from './save.js';
+import { REWARDS, START_OF_DAY, MINIGAME_REWARDS, grant } from './rewards.js';
 
 const AREAS = {
   garden: buildGarden, bedroom: buildBedroom, kitchen: buildKitchen, ballroom: buildBallroom,
   halloween: buildHalloween, party: buildParty, haunt: buildHaunt, winter: buildWinter, pool: buildPool,
+  palace: buildPalace, sky: buildSky, sea: buildSea, farm: buildFarm, studio: buildStudio,
+  circus: buildCircus, camp: buildCamp, rink: buildRink,
 };
 // default daylight; an area can supply its own `light` (night scenes are dimmer and bluer)
 const DAY_LIGHT = { hemi: 0.9, hemiColor: 0xffffff, hemiGround: 0xbfe8a8, sun: 1.5, sunColor: 0xfff3d6 };
 
+// background music + ambient sounds for each place
+const AREA_SOUND = {
+  garden: { music: 'day', ambience: 'birds' }, palace: { music: 'day', ambience: 'birds' },
+  bedroom: { music: 'day' }, kitchen: { music: 'day' }, ballroom: { music: 'party' },
+  halloween: { music: 'spooky', ambience: 'crickets' }, party: { music: 'party' }, haunt: { music: 'spooky', ambience: 'wind' },
+  winter: { music: 'winter', ambience: 'wind' }, pool: { music: 'party', ambience: 'pool' }, sky: { music: 'party' },
+  sea: { music: 'sea', ambience: 'bubbles' }, farm: { music: 'day', ambience: 'birds' }, studio: { music: 'day' },
+  circus: { music: 'party' }, camp: { music: 'camp', ambience: 'crickets' }, rink: { music: 'winter', ambience: 'wind' },
+};
+// animal names the call synth knows (model name -> call)
+const CALLS = new Set(['bunny', 'cat', 'dog', 'fox', 'penguin', 'pig', 'cow', 'chick', 'fish', 'lion', 'elephant', 'panda', 'giraffe', 'monkey']);
 const SPEED = 4.2;
 const PLAYER_R = 0.4;
 const SPARKLE_COLORS = [0xffffff, 0xffe9a8, 0xffc2e0, 0xd9c2ff];
@@ -87,6 +112,7 @@ export class Game {
     this.stop = 0.05;
     this.targetItem = null;
     this.stuck = 0;
+    this.vel = new THREE.Vector3(); // only used on slippery ice
 
     // fx
     this.sparkles = new Particles(scene, textures.star, { max: 700, size: 0.5 });
@@ -113,6 +139,12 @@ export class Game {
     this.groundPlane = new THREE.Plane(UP.clone(), 0);
     this.hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
+    Critter.callHook = (n) => {
+      const now = performance.now();
+      if (!CALLS.has(n) || now - (this.lastCall || 0) < 700) return;
+      this.lastCall = now;
+      audio.sfx.animal(n);
+    };
     this.onResize();
     window.addEventListener('resize', () => this.onResize());
     canvas.addEventListener('pointerdown', (e) => this.onPointer(e));
@@ -120,10 +152,177 @@ export class Game {
 
   async init() {
     await loadAssets((p) => ui.setLoading(p));
+    if (this.saved.pet) this.makePet();
     this.loadArea('garden');
     this.snapCamera();
     this.state = 'title';
-    ui.showTitle(this.saved, DAYS, (id) => this.startDay(id));
+    this.showTitle();
+    ui.bindHold($('parentBtn'), () => this.openParent());
+  }
+
+  showTitle() {
+    ui.showTitle(this.saved, DAYS, () => this.onPlay(), (id) => this.beginDay(id));
+  }
+
+  // "Play": the palace is home. First time ever, choose a pet friend on the way in.
+  async onPlay() {
+    audio.unlock();
+    audio.startMusic();
+    if (!this.saved.pet) return this.pickPet(() => this.goHub());
+    this.goHub();
+  }
+
+  beginDay(id) {
+    audio.unlock();
+    audio.startMusic();
+    if (!this.saved.pet) return this.pickPet(() => this.startDay(id));
+    this.startDay(id);
+  }
+
+  // ------------------------------------------------------------ pet
+  makePet() {
+    const kind = this.saved.pet.kind;
+    this.pet = new Critter(kind, 0.95);
+    this.pet.petKind = kind;
+    this.petTaps = 0;
+  }
+
+  pickPet(then) {
+    this.ui.hideTitle();
+    say(t('pet.pick'));
+    ui.showPetPicker(PET_KINDS, PET_NAMES, (choice) => {
+      this.saved.pet = choice;
+      save(this.saved);
+      this.makePet();
+      audio.sfx.animal(choice.kind);
+      audio.sfx.chime();
+      this.attachPet();
+      this.pet.gesture('gesture-positive');
+      this.hearts.emit(this.pet.root.position.x, 1.5, this.pet.root.position.z, 10, { speed: 0.8, up: 1.4, life: 1.6, colors: [0xff5fae, 0xff8fc7, 0xffffff] });
+      say(t('pet.name.' + choice.name));
+      this.after(2.2, then);
+    }, (what, id) => audio.sfx.animal(id));
+  }
+
+  attachPet() {
+    if (!this.pet || !this.area) return;
+    this.area.group.add(this.pet.root);
+    this.pet.root.visible = true;
+    if (!this.critters.includes(this.pet)) this.critters.push(this.pet);
+    const p = this.player.position;
+    this.pet.dest = null;
+    this.pet.root.position.set(p.x - 1.4, 0, p.z + 0.9);
+    this.pet.heading = this.heading;
+    this.pet.root.rotation.y = this.heading;
+  }
+
+  addPetItem() {
+    if (!this.pet) return;
+    this.addItem({
+      track: this.pet.root, hitRadius: 0.9, reach: 2.2, hitY: 0.6,
+      run: () => this.petTap(),
+    });
+  }
+
+  petTap() {
+    const c = this.pet;
+    const now = performance.now();
+    this.petTaps = now - (this.lastPetTap || 0) < 2500 ? this.petTaps + 1 : 1;
+    this.lastPetTap = now;
+    audio.sfx.animal(c.petKind);
+    this.hearts.emit(c.root.position.x, 1.6, c.root.position.z, 5, { speed: 0.5, up: 1.3, life: 1.4, colors: [0xff5fae, 0xff8fc7] });
+    if (this.petTaps >= 5) {
+      // lots of tapping: a silly trick
+      this.petTaps = 0;
+      this.pet.play('dance');
+      const y0 = c.root.position.y;
+      this.tween(0.9, (k) => {
+        c.root.position.y = y0 + Math.sin(k * Math.PI) * 1.4;
+        c.model.rotation.x = k * Math.PI * 2;
+      }, () => {
+        c.model.rotation.x = 0;
+        c.root.position.y = y0;
+        c.play('idle');
+      });
+      audio.sfx.chime();
+      this.confettiAt(c.root.position, 3);
+      return;
+    }
+    c.gesture('gesture-positive');
+    if (this.petTaps === 1 && Math.random() < 0.5) say(t('pet.name.' + this.saved.pet.name));
+  }
+
+  changePet() {
+    this.state = 'menu';
+    this.target = null;
+    this.saved.pet = null;
+    if (this.pet) {
+      this.pet.root.removeFromParent();
+      this.critters = this.critters.filter((c) => c !== this.pet);
+      this.pet = null;
+    }
+    this.pickPet(() => this.goHub());
+  }
+
+  // ------------------------------------------------------------ photo booth
+  startPhoto(booth) {
+    this.state = 'photo';
+    this.target = null;
+    this.player.position.copy(booth.standAt);
+    this.heading = 0;
+    this.player.rotation.y = 0;
+    this.player.userData.cheering = true;
+    if (this.pet) {
+      this.pet.dest = null;
+      this.pet.root.position.set(booth.standAt.x + 1.6, 0, booth.standAt.z + 0.7);
+      this.pet.heading = 0;
+      this.pet.root.rotation.y = 0;
+    }
+    this.camOverride = { pos: booth.camPos, look: booth.camLook };
+    say(t('hub.photo'));
+    ui.showPhotoUi(['🏰', '🌈', '🌙'], (i) => {
+      audio.sfx.tap();
+      booth.setBackdrop(i);
+    }, () => this.shoot(), () => this.endPhoto(booth));
+  }
+
+  shoot() {
+    ui.flash();
+    audio.sfx.shutter();
+    this.renderer.render(this.scene, this.camera);
+    const src = this.canvas;
+    const out = document.createElement('canvas');
+    out.width = 360;
+    out.height = 225;
+    const ar = 360 / 225;
+    let cw = src.width;
+    let ch = cw / ar;
+    if (ch > src.height) {
+      ch = src.height;
+      cw = ch * ar;
+    }
+    out.getContext('2d').drawImage(src, (src.width - cw) / 2, (src.height - ch) / 2, cw, ch, 0, 0, 360, 225);
+    this.saved.photos.unshift(out.toDataURL('image/jpeg', 0.8));
+    this.saved.photos = this.saved.photos.slice(0, 12);
+    save(this.saved);
+    this.after(0.6, () => {
+      say(t('hub.photoSaved'));
+    });
+    if (this.pet) this.pet.gesture('gesture-positive');
+  }
+
+  endPhoto(booth) {
+    ui.hidePhotoUi();
+    this.camOverride = null;
+    this.player.userData.cheering = false;
+    this.player.position.copy(booth.pos);
+    this.state = 'play';
+  }
+
+  petCheer() {
+    if (!this.pet || this.state === 'wardrobe') return;
+    this.pet.play('dance');
+    this.after(1.6, () => this.pet && this.state !== 'party' && this.pet.play('idle'));
   }
 
   // ------------------------------------------------------------ areas
@@ -146,6 +345,7 @@ export class Game {
       this.critters.push(c);
     }
     if (followers) this.followers = keep.slice();
+    this.attachPetLater = true;
 
     this.scene.background = new THREE.Color(this.area.bg);
     this.scene.fog = this.area.fog ? new THREE.Fog(this.area.fog.color, this.area.fog.near, this.area.fog.far) : null;
@@ -159,6 +359,10 @@ export class Game {
     this.heading = this.area.heading;
     this.player.rotation.y = this.heading;
     this.camZoom = this.camZoomTarget = 1;
+    this.camOverride = null;
+    this.vel.set(0, 0, 0);
+    this.attachPet();
+    audio.setScene(AREA_SOUND[name] || {});
   }
 
   addCritter(c) {
@@ -193,7 +397,7 @@ export class Game {
   }
 
   async startDay(id) {
-    const day = DAYS.find((d) => d.id === id);
+    const day = DAYS.find((d) => d.id === id) || MINIGAMES.find((d) => d.id === id);
     if (!day) return;
     audio.unlock();
     audio.startMusic();
@@ -211,29 +415,88 @@ export class Game {
     this.player.userData.cheering = false;
     this.camZoomTarget = 1;
     this.loadArea(day.area);
+    grant(this.saved, START_OF_DAY[day.id]);
+    this.score = 0;
+    ui.setScore(null);
     day.start(this);
+    if (!day.minigame || day.minigame === 'dance') this.addPetItem();
     ui.showHud(day);
     this.refreshQuestUi();
     this.snapCamera();
-    this.state = 'play';
+    this.state = day.minigame === 'ride' ? 'minigame' : 'play';
+    if (day.minigame) ui.setScore(0);
     this.idle = 0;
     await ui.fade(false);
     say(day.intro);
+    if (!day.minigame) this.maybeTutorial();
   }
 
-  async goHome() {
+  // the very first time: a pointing hand shows where to tap to walk
+  maybeTutorial() {
+    if (this.saved.tutorial) return;
+    this.tutorialOn = true;
+    this.after(3.5, () => {
+      if (!this.tutorialOn) return;
+      say(t('tutorial.tap'));
+      const p = this.player.position;
+      const ahead = new THREE.Vector3(p.x, 0, p.z - 4).project(this.camera);
+      ui.showHand(((ahead.x + 1) / 2) * innerWidth, ((1 - ahead.y) / 2) * innerHeight);
+    });
+  }
+
+  endTutorial() {
+    if (!this.tutorialOn) return;
+    this.tutorialOn = false;
+    ui.hideHand();
+    this.saved.tutorial = true;
+    save(this.saved);
+  }
+
+  async goTitle() {
     this.state = 'loading';
     ui.hideEnd();
     ui.hideHud();
     ui.hideTray();
+    ui.hideHand();
     await ui.fade(true);
     this.day = null;
     this.player.userData.cheering = false;
     this.loadArea('garden');
     this.snapCamera();
     this.state = 'title';
-    ui.showTitle(this.saved, DAYS, (id) => this.startDay(id));
+    this.showTitle();
     await ui.fade(false);
+  }
+
+  // home: the palace garden
+  async goHub() {
+    this.state = 'loading';
+    ui.hideEnd();
+    ui.hideTitle();
+    ui.hideHud();
+    ui.hideTray();
+    await ui.fade(true);
+    this.day = HUB;
+    this.stepIndex = 0;
+    this.progress = 0;
+    this.pending = {};
+    this.bag = {};
+    this.target = null;
+    this.player.userData.cheering = false;
+    this.camZoomTarget = 1;
+    this.loadArea('palace');
+    HUB.start(this);
+    this.addPetItem();
+    ui.showHud(HUB);
+    ui.setSteps([], 0, 0);
+    this.snapCamera();
+    this.state = 'play';
+    await ui.fade(false);
+    if (!this.hubGreeted) {
+      this.hubGreeted = true;
+      say(t('hub.welcome'));
+    }
+    this.maybeTutorial();
   }
 
   // run a scene change behind a quick fade (used for door / location changes mid-day)
@@ -273,6 +536,7 @@ export class Game {
 
   advanceStep() {
     audio.sfx.chime();
+    this.petCheer();
     this.burst(this.player.position, 28, 1.4);
     this.advanceStepSilent();
     const next = this.step;
@@ -301,11 +565,74 @@ export class Game {
   finishDay(message) {
     if (this.state === 'done') return;
     this.state = 'done';
+    if (this.day.minigame) {
+      const kind = this.day.minigame;
+      this.saved.best[kind] = Math.max(this.saved.best[kind] || 0, this.score);
+      const got = grant(this.saved, MINIGAME_REWARDS[kind]);
+      save(this.saved);
+      this.petCheer();
+      ui.setScore(null);
+      ui.showEnd(this.day, this.score, false, null, () => this.goHub(), got);
+      if (got.length) this.after(1.5, () => say(t(got[0].type === 'dress' ? 'ui.newDress' : 'ui.newCrown')));
+      return;
+    }
     if (!this.saved.stickers.includes(this.day.id)) this.saved.stickers.push(this.day.id);
+    const fresh = grant(this.saved, REWARDS[this.day.id]);
+    this.saved.daysPlayed++;
+    // flowers that were watered grow one step for every day played
+    this.saved.plots = this.saved.plots.map((p) => (p && p.watered && p.stage < 3 ? { ...p, stage: p.stage + 1, watered: false } : p));
     save(this.saved);
+    this.petCheer();
     const next = DAYS.find((d) => d.id === this.day.id + 1);
-    ui.showEnd(this.day, this.saved.stickers.length, !!next, () => (next ? this.startDay(next.id) : this.goHome()), () => this.goHome());
+    ui.showEnd(this.day, this.saved.stickers.length, !!next, () => (next ? this.startDay(next.id) : this.goHub()), () => this.goHub(), fresh);
     if (message) say(message);
+    if (fresh.length) this.after(3.6, () => say(t(fresh[0].type === 'dress' ? 'ui.newDress' : 'ui.newCrown')));
+  }
+
+  // ------------------------------------------------------------ parent corner, sticker book, day map
+  openParent() {
+    audio.unlock();
+    ui.showParent({
+      volume: audio.getVolume(),
+      onVolume: (v) => {
+        audio.setVolume(v);
+        this.saved.volume = v;
+        save(this.saved);
+      },
+      onLang: (l) => setLang(l),
+      onHome: () => this.goHub(),
+      onTitle: () => this.goTitle(),
+      onReset: () => {
+        resetAll();
+        location.reload();
+      },
+    });
+  }
+
+  openBook() {
+    this.state = 'menu';
+    this.target = null;
+    const show = () => {
+      ui.showBook(this.saved, DAYS, () => (this.state = 'play'), (i) => {
+        $('book').hidden = true;
+        ui.showPhotoView(
+          this.saved.photos[i],
+          () => {
+            this.saved.photos.splice(i, 1);
+            save(this.saved);
+            show();
+          },
+          () => show()
+        );
+      });
+    };
+    show();
+  }
+
+  openDayMap() {
+    this.state = 'menu';
+    this.target = null;
+    ui.showDayMap(this.saved, DAYS, (id) => this.beginDay(id), () => (this.state = 'play'));
   }
 
   // ------------------------------------------------------------ wardrobe
@@ -316,6 +643,7 @@ export class Game {
     this.camZoomTarget = 0.5;
     ui.showWardrobe(
       this.saved.outfit,
+      this.saved.unlocked,
       (o) => {
         this.saved.outfit = o;
         this.player.userData.setOutfit(o);
@@ -329,6 +657,10 @@ export class Game {
         this.player.userData.cheering = true;
         this.after(1.4, () => (this.player.userData.cheering = false));
         onDone();
+      },
+      () => {
+        audio.sfx.nope();
+        say(t('wardrobe.locked'));
       }
     );
     say(t('wardrobe.pick'));
@@ -375,8 +707,14 @@ export class Game {
   // ------------------------------------------------------------ input
   onPointer(e) {
     audio.unlock();
+    if (this.state === 'minigame' && this.day && this.day.onTap) {
+      const r = this.canvas.getBoundingClientRect();
+      this.day.onTap(this, { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 });
+      return;
+    }
     if (this.state !== 'play') return;
     this.idle = 0;
+    this.endTutorial();
     const rect = this.canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
@@ -466,6 +804,20 @@ export class Game {
     this.timers.push({ t: sec, fn });
   }
 
+  // true when the same thing is tapped four times within three seconds: time for a silly reaction
+  sillyTap(key) {
+    const now = performance.now();
+    const rec = (this.tapLog = this.tapLog || {});
+    const r = rec[key] && now - rec[key].t < 3000 ? rec[key] : (rec[key] = { n: 0, t: now });
+    r.n++;
+    r.t = now;
+    if (r.n >= 4) {
+      r.n = 0;
+      return true;
+    }
+    return false;
+  }
+
   // an item shrinks away as it goes into the bag
   pickUp(obj, rise = 0.9, dur = 0.4) {
     const y0 = obj.position.y;
@@ -532,6 +884,12 @@ export class Game {
       lookY = 1.2 - z * 1.0;
       ahead = new THREE.Vector3(0, 0, -2.5 * (1 - z)).applyAxisAngle(UP, this.camAngle);
     }
+    if (this.camOverride) {
+      this.camPos.lerp(this.camOverride.pos, 1 - Math.exp(-dt * 3));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.camOverride.look);
+      return;
+    }
     const desired = this.player.position.clone().add(off);
     this.camPos.lerp(desired, 1 - Math.exp(-dt * 4));
     this.camera.position.copy(this.camPos);
@@ -541,6 +899,7 @@ export class Game {
 
   resolveCollisions() {
     const p = this.player.position;
+    this.push = null; // direction of the last obstacle we were pushed away from
     for (const c of this.area.colliders) {
       // circles {x,z,r} or axis-aligned boxes {x,z,hw,hd}
       const nx = c.hw ? Math.max(c.x - c.hw, Math.min(c.x + c.hw, p.x)) : c.x;
@@ -552,6 +911,7 @@ export class Game {
       if (d < min && d > 0.0001) {
         p.x = nx + (dx / d) * min;
         p.z = nz + (dz / d) * min;
+        this.push = { x: dx / d, z: dz / d };
       } else if (c.hw && d <= 0.0001) {
         // centre inside the box: push out along the shallow axis
         const px = c.hw - Math.abs(p.x - c.x);
@@ -565,13 +925,21 @@ export class Game {
 
   updatePlayer(dt) {
     const p = this.player.position;
+    const slip = !!(this.area && this.area.slippery);
     let moving = 0;
     if (this.target) {
       const dx = this.target.x - p.x;
       const dz = this.target.z - p.z;
       const d = Math.hypot(dx, dz);
-      if (d <= this.stop) {
+      if (d <= (slip ? Math.max(this.stop, 0.45) : this.stop)) {
         this.arrive(this.targetItem);
+      } else if (slip) {
+        // on ice: speed builds up and fades slowly, so she glides
+        this.vel.lerp(new THREE.Vector3((dx / d) * SPEED, 0, (dz / d) * SPEED), 1 - Math.exp(-dt * 2.2));
+        p.x += this.vel.x * dt;
+        p.z += this.vel.z * dt;
+        this.resolveCollisions();
+        this.heading = Math.atan2(this.vel.x, this.vel.z);
       } else {
         const step = Math.min(SPEED * dt, d - this.stop + 0.001);
         const bx = p.x;
@@ -579,7 +947,20 @@ export class Game {
         p.x += (dx / d) * step;
         p.z += (dz / d) * step;
         this.resolveCollisions();
-        const moved = Math.hypot(p.x - bx, p.z - bz);
+        let moved = Math.hypot(p.x - bx, p.z - bz);
+        if (moved < step * 0.5 && this.push) {
+          // blocked head-on: slide sideways along the obstacle, toward whichever side gets us to the target
+          let tx = -this.push.z;
+          let tz = this.push.x;
+          if (tx * dx + tz * dz < 0) {
+            tx = -tx;
+            tz = -tz;
+          }
+          p.x += tx * SPEED * dt * 0.9;
+          p.z += tz * SPEED * dt * 0.9;
+          this.resolveCollisions();
+          moved = Math.hypot(p.x - bx, p.z - bz);
+        }
         moving = Math.min(1, moved / (SPEED * dt));
         this.heading = Math.atan2(dx, dz);
         this.stuck = moved < step * 0.3 ? this.stuck + dt : 0;
@@ -590,6 +971,16 @@ export class Game {
           if (near) this.arrive(item);
         }
       }
+    }
+    if (slip) {
+      if (!this.target) {
+        this.vel.multiplyScalar(Math.exp(-dt * 1.6));
+        p.x += this.vel.x * dt;
+        p.z += this.vel.z * dt;
+        this.resolveCollisions();
+        if (this.vel.length() > 0.4) this.heading = Math.atan2(this.vel.x, this.vel.z);
+      }
+      moving = Math.min(1, this.vel.length() / SPEED);
     }
     this.walk += (moving - this.walk) * Math.min(1, dt * 10);
     let diff = this.heading - this.player.rotation.y;
@@ -618,6 +1009,34 @@ export class Game {
         c.heading = Math.atan2(p.x - c.root.position.x, p.z - c.root.position.z);
       }
     });
+  }
+
+  // the pet trots along behind-left of the princess whenever the game is in free play
+  updatePet() {
+    const c = this.pet;
+    if (!c || this.state !== 'play') return;
+    const p = this.player.position;
+    const fx = Math.sin(this.heading);
+    const fz = Math.cos(this.heading);
+    let tx = p.x - fx * 1.5 - fz * 0.9;
+    let tz = p.z - fz * 1.5 + fx * 0.9;
+    // never stand in the pool or inside a box obstacle
+    for (const o of this.area.colliders) {
+      if (!o.hw) continue;
+      if (Math.abs(tx - o.x) < o.hw + 0.5 && Math.abs(tz - o.z) < o.hd + 0.5) {
+        tz = o.z + o.hd + 0.7;
+      }
+    }
+    const d = Math.hypot(tx - c.root.position.x, tz - c.root.position.z);
+    if (d > 0.8) {
+      c.speed = Math.min(5.4, 2.2 + d * 0.9);
+      c.dest = c.dest || new THREE.Vector3();
+      c.dest.set(tx, 0, tz);
+    } else if (c.dest) {
+      c.dest = null;
+      c.play('idle');
+      c.heading = Math.atan2(p.x - c.root.position.x, p.z - c.root.position.z);
+    }
   }
 
   updateHints(dt) {
@@ -679,6 +1098,7 @@ export class Game {
 
     this.updatePlayer(dt);
     this.updateFollowers();
+    this.updatePet();
     this.area.update(dt, this.t);
     for (const c of this.critters) c.update(dt, this.area.clamp);
     if (this.day && this.day.update) this.day.update(this, dt, this.t);

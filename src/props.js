@@ -193,3 +193,114 @@ export function makeBat() {
   root.userData.wings = wings;
   return root;
 }
+
+// A cube-style unicorn: white body, golden horn, rainbow mane and tail. Faces +z.
+export function makeUnicorn() {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const WHITE = 0xfff7fb;
+  const RAINBOW = [0xff6b6b, 0xffa94d, 0xffe066, 0x8ce99a, 0x74c0fc, 0xb197fc];
+  add(body, SPHERE, WHITE, [0, 1.25, 0], [0.55, 0.6, 1.0]);
+  const neck = add(body, CYL, WHITE, [0, 1.75, 0.75], [0.26, 0.9, 0.26]);
+  neck.rotation.x = 0.55;
+  const head = new THREE.Group();
+  head.position.set(0, 2.15, 1.1);
+  body.add(head);
+  add(head, SPHERE, WHITE, [0, 0, 0], [0.3, 0.3, 0.38]);
+  add(head, SPHERE, 0xffd6ea, [0, -0.13, 0.33], [0.2, 0.17, 0.2]);
+  add(head, SPHERE, 0x2b2236, [-0.2, 0.07, 0.17], [0.045, 0.06, 0.03]);
+  add(head, SPHERE, 0x2b2236, [0.2, 0.07, 0.17], [0.045, 0.06, 0.03]);
+  for (const sx of [-1, 1]) add(head, CONE, WHITE, [sx * 0.15, 0.36, -0.05], [0.08, 0.2, 0.06]);
+  const horn = add(head, CONE, 0xffe9a8, [0, 0.55, 0.12], [0.1, 0.55, 0.1]);
+  horn.rotation.x = 0.25;
+  RAINBOW.forEach((c, i) => {
+    add(body, SPHERE, c, [0, 2.05 - i * 0.15, 0.55 - i * 0.2], [0.13, 0.2, 0.18]);
+    add(body, SPHERE, c, [0, 1.45 - i * 0.12, -1.0 - i * 0.07], [0.15, 0.18, 0.18]);
+  });
+  const legs = [];
+  for (const [x, z] of [[-0.3, 0.6], [0.3, 0.6], [-0.3, -0.6], [0.3, -0.6]]) {
+    const leg = new THREE.Group();
+    leg.position.set(x, 0.95, z);
+    add(leg, CYL, WHITE, [0, -0.4, 0], [0.11, 0.85, 0.11]);
+    add(leg, SPHERE, 0xffd6ea, [0, -0.85, 0.02], [0.13, 0.08, 0.14]);
+    body.add(leg);
+    legs.push(leg);
+  }
+  root.userData.animate = (t, run) => {
+    const sw = Math.sin(t * 11) * 0.7 * run;
+    legs[0].rotation.x = sw;
+    legs[3].rotation.x = sw;
+    legs[1].rotation.x = -sw;
+    legs[2].rotation.x = -sw;
+    body.position.y = Math.abs(Math.sin(t * 11)) * 0.12 * run;
+    head.rotation.x = Math.sin(t * 1.6) * 0.06;
+  };
+  root.scale.setScalar(0.85);
+  return root;
+}
+
+// ---- ballet bits
+export function makeBalletShoes() {
+  const root = new THREE.Group();
+  for (const sx of [-1, 1]) {
+    add(root, SPHERE, 0xffb3d1, [sx * 0.2, 0.1, 0], [0.13, 0.09, 0.28]);
+    add(root, SPHERE, 0xffd6e8, [sx * 0.2, 0.14, 0.2], [0.1, 0.07, 0.1]);
+    const r = add(root, new THREE.TorusGeometry(0.12, 0.012, 6, 14), 0xff7ab5, [sx * 0.2, 0.18, -0.05]);
+    r.rotation.x = Math.PI / 2;
+  }
+  return root;
+}
+
+export function makeTutu() {
+  const root = new THREE.Group();
+  [[0.5, 0.14, 0xffb3d9], [0.4, 0.2, 0xffffff], [0.3, 0.26, 0xff8fc7]].forEach(([r, y, c], i) => add(root, CYL, c, [0, y + i * 0.05, 0], [r, 0.05, r]));
+  add(root, CYL, 0xffd23f, [0, 0.4, 0], [0.18, 0.12, 0.18]);
+  return root;
+}
+
+export function makeRibbon() {
+  const root = new THREE.Group();
+  const loop = add(root, new THREE.TorusGeometry(0.2, 0.05, 8, 18), 0xff5fae, [0, 0.3, 0]);
+  loop.rotation.x = Math.PI / 2;
+  add(root, BOX, 0xff5fae, [-0.08, 0.15, 0.1], [0.07, 0.4, 0.03]).rotation.z = 0.3;
+  add(root, BOX, 0xff5fae, [0.08, 0.15, 0.1], [0.07, 0.4, 0.03]).rotation.z = -0.3;
+  return root;
+}
+
+// ---- circus + camp
+export function makeBall(color) {
+  const root = new THREE.Group();
+  add(root, SPHERE, color, [0, 0.3, 0], 0.3);
+  add(root, SPHERE, 0xffffff, [-0.1, 0.42, 0.22], [0.06, 0.08, 0.03]).castShadow = false;
+  return root;
+}
+
+export function makeTent(color = 0xff8fc7, stripe = 0xffffff) {
+  const root = new THREE.Group();
+  const body = add(root, new THREE.ConeGeometry(1, 1, 4), color, [0, 1.1, 0], [2.0, 2.2, 1.6]);
+  body.rotation.y = Math.PI / 4;
+  body.scale.set(2.3, 2.2, 1.7);
+  add(root, BOX, 0x2b2236, [0, 0.6, 1.0], [0.8, 1.2, 0.05]);
+  add(root, SPHERE, stripe, [0, 2.3, 0], 0.12);
+  return root;
+}
+
+export function makeLog() {
+  const root = new THREE.Group();
+  const l = add(root, CYL, 0x8a5a33, [0, 0.12, 0], [0.12, 0.9, 0.12]);
+  l.rotation.z = Math.PI / 2;
+  add(root, CYL, 0xc99a6b, [0.44, 0.12, 0], [0.12, 0.02, 0.12]).rotation.z = Math.PI / 2;
+  return root;
+}
+
+export function makeSnowflake() {
+  const root = new THREE.Group();
+  const m = add(root, new THREE.OctahedronGeometry(0.35), new THREE.MeshBasicMaterial({ color: 0xeaf7ff }), [0, 0, 0]);
+  m.scale.set(1, 1.4, 0.45);
+  const m2 = add(root, new THREE.OctahedronGeometry(0.35), new THREE.MeshBasicMaterial({ color: 0xbfe3ff }), [0, 0, 0]);
+  m2.scale.set(1.4, 1, 0.45);
+  const gl = makeGlow(0xcfeaff, 2.4);
+  root.add(gl);
+  return root;
+}

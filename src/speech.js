@@ -1,7 +1,7 @@
 // Spoken lines + a subtitle for grown-ups.
 // Order of preference: a recorded clip (public/voice/<lang>/<id>.mp3, listed in manifest.json),
 // then a device voice for the language, otherwise the subtitle alone.
-import { isMuted, onMuteChange } from './audio.js';
+import { isMuted, onMuteChange, getVolume } from './audio.js';
 import { lang } from './i18n.js';
 import { lineId } from './hash.js';
 
@@ -55,6 +55,7 @@ export function say(text) {
   const id = lineId(text);
   if (clips[id]) {
     clip = new Audio(`${BASE}voice/${lang}/${id}.mp3`);
+    clip.volume = getVolume();
     clip.play().catch(() => {}); // autoplay can be refused before the first tap
     return;
   }

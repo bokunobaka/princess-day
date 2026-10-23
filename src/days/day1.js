@@ -74,6 +74,11 @@ export default {
       run: () => {
         a.waveTeddy(2);
         sfx.boing();
+        if (game.sillyTap('teddy')) {
+          a.cheerTeddy(2.5);
+          sfx.chime();
+          game.confettiAt(a.teddy.position, 3);
+        }
         game.hearts.emit(a.teddy.position.x, 2, a.teddy.position.z, 6, { speed: 0.6, up: 1.2, life: 1.6, colors: [0xff5fae, 0xff8fc7] });
         if (game.state !== 'play') return;
         const id = game.step && game.step.id;

@@ -25,7 +25,7 @@ Lines are spoken from recorded clips in `public/voice/et/` (voice "Triin" from j
 device voice and finally to the subtitle alone. A clip is found by a hash of its exact text, so editing a line
 in `src/i18n.js` means re-recording that line.
 
-    node tools/voice-lines.mjs > lines.json      # every spoken line with its id (141 lines)
+    node tools/voice-lines.mjs > lines.json      # every spoken line with its id (228 lines)
     # generate each line as <id>.wav with voice Triin, put them in one folder, then:
     node tools/wav-to-mp3.mjs <folder-with-wavs>  # writes public/voice/et/*.mp3 + manifest.json
 
@@ -43,15 +43,31 @@ in `src/i18n.js` means re-recording that line.
 | 8 Zombie Escape | graveyard | find 3 keys, open the gate, run into the light; friendly zombies only want hugs |
 | 9 Christmas | snowy garden | hang ornaments on the tree, build a snowman, give presents to friends |
 | 10 Pool Day | pool deck | find pool toys, jump in (friends too), serve everyone a drink |
+| 11 Mermaid Day | under the sea | open clams for pearls, befriend three little fish, open the treasure chest |
+| 12 Farm Day | farm | collect eggs, milk the cow, lead chicks to the coop |
+| 13 Ballet Day | ballet studio | find shoes, tutu and ribbon, dance on glowing marks, perform on stage |
+| 14 Circus Day | circus ring | gather juggling balls, walk the balance beam, send the lion through the hoop |
+| 15 Camping Day | campsite at dusk | find firewood, light the campfire, toast marshmallows for friends |
+| 16 Ice Skating Day | ice rink | glide on slippery ice, gather snowflakes, spin on the star, skate with friends |
 
-Days unlock in order; finished days can be replayed from the title screen.
+Days unlock in order; finished days can be replayed from the title screen or the palace signpost.
+
+## Beyond the days
+
+- **The palace garden** is home: a pet house, flower beds (plant, water, and the flowers grow as days are played),
+  a photo booth (photos are kept in the sticker book), a dress-up mirror, the sticker book, the day map, a stable and a dance pavilion.
+- **Mini-games** from the palace: a unicorn ride over a rainbow road (steer by tapping) and a dance-memory game.
+- **A pet friend** (picked and named on first play) follows her everywhere and cheers when quests are done.
+- **Rewards:** each finished day (and mini-game) unlocks a dress or a crown in the wardrobe.
+- **Parent corner:** hold the gear button for about a second: language (Estonian/English), volume, back to the palace or title, start over.
+- **Offline:** the built game installs on a tablet ("Add to Home Screen") and then works without Wi-Fi (service worker generated at build time).
 Dev shortcuts: `?day=3` starts a day directly, `?unlock` unlocks all days, `?area=kitchen` previews a room.
 
 ## Code map
 
 - `src/game.js` core: input, camera, areas, quest progress, followers, wardrobe
 - `src/days/` one file per day (steps + behaviour); add a day by adding a file and listing it in `index.js`
-- `src/areas/` the garden and indoor rooms
+- `src/areas/` the places: garden, palace, rooms, sea, farm, rink...
 - `src/models.js` procedural princess (dress/crown outfits), Teddy, flowers, tea set
 - `src/assets.js` glTF loading + animated animal friends; `src/ui.js` HUD, title, wardrobe, tray
 - Spoken lines use the browser's speech synthesis (`src/speech.js`); swap for recorded clips later.
@@ -59,4 +75,5 @@ Dev shortcuts: `?day=3` starts a day directly, `?unlock` unlocks all days, `?are
 ## Credits
 
 3D models by [Kenney](https://kenney.nl) (Cube Pets, Food Kit, Furniture Kit, Graveyard Kit, Holiday Kit), CC0 licensed.
+The unicorn, princess, Teddy, houses, pool and other props are built from shapes in code.
 Licence files are in `public/models/*/`.

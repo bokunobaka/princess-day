@@ -10,14 +10,17 @@ const E = STRINGS.et;
 const out = new Set();
 const add = (s) => s && out.add(s);
 
-// every spoken sentence: day lines (not names, item words or templates with {slots}) + the wardrobe prompt
+// every spoken sentence: day / hub / pet / mini-game lines (not names, item words or templates with {slots})
+const SPOKEN = /^(d\d+|hub|pet|tutorial|mg)\./;
+const EXTRA = ['wardrobe.pick', 'wardrobe.locked', 'ui.newDress', 'ui.newCrown'];
 const plain = Object.keys(E).filter(
-  (k) => (k === 'wardrobe.pick' || /^d\d+\./.test(k)) && !/\.name$|\.i\./.test(k) && !E[k].includes('{')
+  (k) => (EXTRA.includes(k) || SPOKEN.test(k)) && !/\.name$|\.i\./.test(k) && typeof E[k] === 'string' && !E[k].includes('{')
 );
 plain.forEach((k) => add(E[k]));
 E.nums.forEach(add);
 E.stirs.forEach(add);
 E.splashes.forEach(add);
+E.poses.forEach(add);
 ['yellow', 'white', 'purple'].forEach((c) => add(t('d1.other', { color: t('color.' + c) })));
 ['egg', 'flour', 'strawberry'].forEach((i) => add(t('d3.found', { x: t('d3.i.' + i) })));
 const guests = [['bunny', 'carrot'], ['elephant', 'cookie'], ['panda', 'cupcake']];
