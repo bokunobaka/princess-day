@@ -7,6 +7,9 @@ quests are shown as pictures, friends speak their lines, and nothing can be lost
     npm run dev       # open the printed URL (also reachable from a tablet on the same Wi-Fi)
     npm run build     # production build in dist/ (relative paths, host it from any folder)
 
+**Play it:** https://bokunobaka.github.io/princess-day/ (published by GitHub Pages; every push to `main`
+rebuilds and redeploys it via `.github/workflows/pages.yml`, about a minute).
+
 Tap the ground to walk; tap things to pick them up, talk to them, or use them.
 Progress (finished days, outfit, sound setting) is kept in localStorage.
 
