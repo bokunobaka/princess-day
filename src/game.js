@@ -321,7 +321,7 @@ export class Game {
     ui.hidePhotoUi();
     this.camOverride = null;
     this.player.userData.cheering = false;
-    this.player.position.copy(booth.pos);
+    this.player.position.copy(booth.exitAt);
     this.state = 'play';
   }
 

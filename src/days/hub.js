@@ -40,7 +40,10 @@ export default {
       game.after(1.6, () => game.startDay(102));
     }, S.dance.group, new THREE.Vector3(11.5, 0.9, -3));
 
-    station(S.booth, '📸', 3.2, 1.5, 2.4, () => game.startPhoto(S.booth));
+    // the photo booth is the camera on its tripod: tap it, or just walk up to it
+    this.booth = S.booth;
+    this.boothArmed = true;
+    station({ pos: S.booth.spot, group: S.booth.group }, '📸', 3.2, 1.4, 1.7, () => game.startPhoto(S.booth));
 
     station(S.book, '📖', 2.8, 1.2, 2.0, () => {
       sfx.chime();
@@ -98,5 +101,18 @@ export default {
         },
       });
     });
+  },
+
+  // walking up to the camera starts the photo booth; after leaving it, step away again before it can start once more
+  update(game) {
+    const b = this.booth;
+    if (!b || game.state !== 'play') return;
+    const p = game.player.position;
+    const d = Math.hypot(p.x - b.spot.x, p.z - b.spot.z);
+    if (d > 2.8) this.boothArmed = true;
+    else if (this.boothArmed && d < 1.5) {
+      this.boothArmed = false;
+      game.startPhoto(b);
+    }
   },
 };

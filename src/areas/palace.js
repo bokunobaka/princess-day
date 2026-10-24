@@ -218,6 +218,8 @@ export function buildPalace(game) {
   place(g, cam, 4.6, -8.2, { rot: -0.5 });
   stations.booth = {
     pos: new THREE.Vector3(7.5, 0, -8.4),
+    spot: new THREE.Vector3(4.6, 0, -8.2), // the camera on its tripod: tap it or walk up to it
+    exitAt: new THREE.Vector3(7, 0, -6.2), // where the princess steps out (beyond the walk-up radius)
     standAt: new THREE.Vector3(7.5, 0, -10.3),
     camPos: new THREE.Vector3(7.5, 2.6, -4.9),
     camLook: new THREE.Vector3(7.5, 1.6, -10.3),
