@@ -10,7 +10,12 @@ quests are shown as pictures, friends speak their lines, and nothing can be lost
 **Play it:** https://bokunobaka.github.io/princess-day/ (published by GitHub Pages; every push to `main`
 rebuilds and redeploys it via `.github/workflows/pages.yml`, about a minute).
 
-Tap the ground to walk; tap things to pick them up, talk to them, or use them.
+Two ways to move, and they work together (change it in the parent corner: *Both / Tap / Joystick*):
+
+- **Tap** the ground to walk there; tap things to pick them up, talk to them, or use them.
+- **Hold and drag** anywhere to get a floating joystick: drag *up* to walk away from the camera, *down* to come back,
+  left and right to turn. The further you drag, the faster you go. Let go to stop.
+
 Progress (finished days, outfit, sound setting) is kept in localStorage.
 
 ## Language

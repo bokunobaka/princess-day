@@ -6,6 +6,7 @@ const defaults = () => ({
   stickers: [],          // finished day ids
   muted: false,
   volume: 1,
+  controls: 'both',      // both | tap | stick
   outfit: { dress: 0, crown: 0 },
   unlocked: { dress: [...START_UNLOCKED.dress], crown: [...START_UNLOCKED.crown] },
   pet: null,             // { kind, name }

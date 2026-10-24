@@ -53,6 +53,7 @@ const CALLS = new Set(['bunny', 'cat', 'dog', 'fox', 'penguin', 'pig', 'cow', 'c
 const SPEED = 4.2;
 const PLAYER_R = 0.4;
 const SPARKLE_COLORS = [0xffffff, 0xffe9a8, 0xffc2e0, 0xd9c2ff];
+const STICK_R = 62; // px of drag for full speed
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class Game {
@@ -113,6 +114,8 @@ export class Game {
     this.targetItem = null;
     this.stuck = 0;
     this.vel = new THREE.Vector3(); // only used on slippery ice
+    this.input = { x: 0, y: 0, mag: 0 }; // joystick: x right, y down, mag 0..1
+    this.ptr = null; // the finger / mouse button currently down on the canvas
 
     // fx
     this.sparkles = new Particles(scene, textures.star, { max: 700, size: 0.5 });
@@ -147,7 +150,10 @@ export class Game {
     };
     this.onResize();
     window.addEventListener('resize', () => this.onResize());
-    canvas.addEventListener('pointerdown', (e) => this.onPointer(e));
+    canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(ev, (e) => this.onPointerUp(e));
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   async init() {
@@ -594,6 +600,11 @@ export class Game {
     audio.unlock();
     ui.showParent({
       volume: audio.getVolume(),
+      controls: this.saved.controls,
+      onControls: (m) => {
+        this.saved.controls = m;
+        save(this.saved);
+      },
       onVolume: (v) => {
         audio.setVolume(v);
         this.saved.volume = v;
@@ -705,19 +716,77 @@ export class Game {
   }
 
   // ------------------------------------------------------------ input
-  onPointer(e) {
+  // A quick tap walks to that spot (or uses the thing tapped). Pressing and dragging steers like a joystick:
+  // drag up to walk away from the camera, down to walk back, left and right to turn. Both work together.
+  ndcOf(e) {
+    const r = this.canvas.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+  }
+
+  onPointerDown(e) {
     audio.unlock();
     if (this.state === 'minigame' && this.day && this.day.onTap) {
-      const r = this.canvas.getBoundingClientRect();
-      this.day.onTap(this, { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 });
+      this.canvas.setPointerCapture(e.pointerId);
+      this.ptr = { id: e.pointerId, mini: true };
+      this.day.onTap(this, this.ndcOf(e));
       return;
     }
-    if (this.state !== 'play') return;
+    if (this.state !== 'play' || this.ptr) return;
     this.idle = 0;
     this.endTutorial();
-    const rect = this.canvas.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    this.raycaster.setFromCamera(ndc, this.camera);
+    this.canvas.setPointerCapture(e.pointerId);
+    this.ptr = { id: e.pointerId, x0: e.clientX, y0: e.clientY, stick: false };
+  }
+
+  onPointerMove(e) {
+    const p = this.ptr;
+    if (!p || p.id !== e.pointerId) return;
+    if (p.mini) {
+      if (this.day && this.day.onTap) this.day.onTap(this, this.ndcOf(e));
+      return;
+    }
+    const dx = e.clientX - p.x0;
+    const dy = e.clientY - p.y0;
+    if (!p.stick) {
+      if (this.saved.controls === 'tap' || Math.hypot(dx, dy) < 14) return;
+      p.stick = true;
+      this.target = null;
+      this.targetItem = null;
+      this.onArrive = null;
+      ui.showStick(p.x0, p.y0);
+    }
+    let x = dx / STICK_R;
+    let y = dy / STICK_R;
+    const m = Math.hypot(x, y);
+    if (m > 1) {
+      x /= m;
+      y /= m;
+    }
+    ui.moveStick(x, y);
+    // a small dead zone in the middle, then full speed a little before the edge
+    const mag = THREE.MathUtils.clamp((Math.min(m, 1) - 0.12) / 0.7, 0, 1);
+    this.input.x = m > 0 ? x / Math.max(m, 1e-4) : 0;
+    this.input.y = m > 0 ? y / Math.max(m, 1e-4) : 0;
+    this.input.mag = mag;
+    this.idle = 0;
+  }
+
+  onPointerUp(e) {
+    const p = this.ptr;
+    if (!p || p.id !== e.pointerId) return;
+    this.ptr = null;
+    if (p.mini) return;
+    if (p.stick) {
+      this.input.mag = 0;
+      ui.hideStick();
+      return;
+    }
+    if (this.state === 'play') this.tap(e);
+  }
+
+  tap(e) {
+    const ndc = this.ndcOf(e);
+    this.raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), this.camera);
 
     const live = this.items.filter((i) => i.enabled);
     const hits = this.raycaster.intersectObjects(live.map((i) => i.hit), false);
@@ -741,7 +810,7 @@ export class Game {
       const dist = Math.hypot(item.pos.x - this.player.position.x, item.pos.z - this.player.position.z);
       if (dist <= item.reach) this.arrive(item);
       else this.walkTo(item.pos.x, item.pos.z, item.reach - 0.1, item);
-    } else if (onGround) {
+    } else if (onGround && this.saved.controls !== 'stick') {
       this.area.clamp(point);
       audio.sfx.tap();
       this.showMarker(point);
@@ -927,7 +996,35 @@ export class Game {
     const p = this.player.position;
     const slip = !!(this.area && this.area.slippery);
     let moving = 0;
-    if (this.target) {
+    const stick = this.input.mag > 0;
+    if (stick) {
+      // camera-relative: screen-up is away from the camera
+      const a = this.camAngle;
+      const fwd = -this.input.y;
+      const dirx = -Math.sin(a) * fwd + Math.cos(a) * this.input.x;
+      const dirz = -Math.cos(a) * fwd - Math.sin(a) * this.input.x;
+      const len = Math.hypot(dirx, dirz) || 1;
+      const nx = dirx / len;
+      const nz = dirz / len;
+      const sp = SPEED * this.input.mag;
+      this.target = null;
+      this.targetItem = null;
+      if (slip) {
+        this.vel.lerp(new THREE.Vector3(nx * sp, 0, nz * sp), 1 - Math.exp(-dt * 2.2));
+        p.x += this.vel.x * dt;
+        p.z += this.vel.z * dt;
+        this.resolveCollisions();
+        if (this.vel.length() > 0.4) this.heading = Math.atan2(this.vel.x, this.vel.z);
+      } else {
+        const bx = p.x;
+        const bz = p.z;
+        p.x += nx * sp * dt;
+        p.z += nz * sp * dt;
+        this.resolveCollisions();
+        moving = Math.min(1, Math.hypot(p.x - bx, p.z - bz) / (SPEED * dt));
+        this.heading = Math.atan2(nx, nz);
+      }
+    } else if (this.target) {
       const dx = this.target.x - p.x;
       const dz = this.target.z - p.z;
       const d = Math.hypot(dx, dz);
@@ -973,7 +1070,7 @@ export class Game {
       }
     }
     if (slip) {
-      if (!this.target) {
+      if (!this.target && !stick) {
         this.vel.multiplyScalar(Math.exp(-dt * 1.6));
         p.x += this.vel.x * dt;
         p.z += this.vel.z * dt;
@@ -1096,6 +1193,14 @@ export class Game {
       }
     }
 
+    if (this.state !== 'play') {
+      if (this.input.mag) {
+        this.input.mag = 0;
+        ui.hideStick();
+      }
+      if (this.ptr && !this.ptr.mini) this.ptr = null;
+    }
+    if (this.ptr && this.ptr.mini && this.state !== 'minigame') this.ptr = null;
     this.updatePlayer(dt);
     this.updateFollowers();
     this.updatePet();

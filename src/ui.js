@@ -439,7 +439,15 @@ export const ui = {
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
   },
 
-  showParent({ volume, onVolume, onLang, onHome, onReset, onTitle, onClose }) {
+  showParent({ volume, controls, onControls, onVolume, onLang, onHome, onReset, onTitle, onClose }) {
+    const ctls = [['ctlBoth', 'both'], ['ctlTap', 'tap'], ['ctlStick', 'stick']];
+    const ctl = (mode) => ctls.forEach(([id, m]) => $(id).classList.toggle('on', m === mode));
+    ctl(controls);
+    for (const [id, m] of ctls)
+      $(id).onclick = () => {
+        ctl(m);
+        onControls(m);
+      };
     $('volRange').value = Math.round(volume * 100);
     $('volRange').oninput = (e) => onVolume(Number(e.target.value) / 100);
     $('langEt').classList.toggle('on', lang === 'et');
@@ -470,6 +478,23 @@ export const ui = {
       onClose && onClose();
     };
     $('parent').hidden = false;
+  },
+
+  // ------------------------------------------------------------ the floating joystick
+  showStick(x, y) {
+    const st = $('stick');
+    st.style.left = `${x}px`;
+    st.style.top = `${y}px`;
+    this.moveStick(0, 0);
+    st.hidden = false;
+  },
+
+  moveStick(x, y) {
+    $('stickKnob').style.transform = `translate(${x * 40}px, ${y * 40}px)`;
+  },
+
+  hideStick() {
+    $('stick').hidden = true;
   },
 
   // ------------------------------------------------------------ the little pointing hand for the first tap

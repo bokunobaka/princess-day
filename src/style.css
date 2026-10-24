@@ -642,6 +642,31 @@ body.wardrobe-open #subtitle {
 .pill2.on { background: var(--gold); }
 .pill2.danger.armed { background: #ff8a8a; color: #fff; }
 .prow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 14px 0; font-weight: 800; }
+/* the floating joystick */
+#stick {
+  position: fixed;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 95, 174, 0.35);
+  pointer-events: none;
+  z-index: 14;
+}
+#stick[hidden] { display: none; }
+#stickKnob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 10px rgba(120, 40, 90, 0.3), inset 0 -4px 0 rgba(255, 95, 174, 0.35);
+}
 #volRange { width: min(240px, 60vw); height: 32px; accent-color: var(--pink); }
 
 /* wardrobe: more pieces now, so smaller + scrollable, locked ones greyed with a padlock */
